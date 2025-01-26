@@ -1,0 +1,58 @@
+services:
+  db:
+    container_name: postgresql
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: ny_taxi
+    ports:
+      - 5432:5432
+    networks:
+      - data_pipeline_network
+    volumes:
+      - ./postgresql:/var/lib/postgresql/data
+    secrets:
+      - db_password
+    restart:
+      always
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: test@test.local
+      PGADMIN_DEFAULT_PASSWORD_FILE: /run/secrets/pgadmin_password
+      PGADMIN_CONFIG_ALLOW_SPECIAL_EMAIL_DOMAINS: '["arpa", "invalid", "local", "localhost", "onion", "test"]'
+    networks:
+      - data_pipeline_network
+    ports:
+      - 80:80
+    volumes:
+      - ./pgadmin/config_local.py:/pgadmin4/config_local.py
+      - ./pgadmin/servers.json:/pgadmin4/servers.json
+    secrets:
+      - pgadmin_email
+      - pgadmin_password
+    restart:
+      always
+  data_pipeline:
+    networks:
+      - data_pipeline_network
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ny_taxi_data_ingestion
+    depends_on:
+      - db
+
+networks:
+  data_pipeline_network:
+    name: data_pipeline_network
+
+secrets:
+  db_password:
+    file: ./db_password.txt
+  pgadmin_email:
+    file: ./pgadmin_email.txt
+  pgadmin_password:
+    file: ./pgadmin_password.txt
